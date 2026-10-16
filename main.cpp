@@ -21,7 +21,7 @@ private:
     friend class Admin;
     // here constructor is called 
 protected:
-        User(int id,const string& n,string& p){
+        User(int id,const string& n,const string& p){
             userid=id;
             password=p;
             active=true;
@@ -44,89 +44,11 @@ public:
         //getting the details or get the overview of the students
         virtual string getRole() const =0;
         
-        virtual void displayDashboard() const=0;
+        virtual void displayDashboard() =0;
 
     //then we have to ask for the sign in and sign up for the user then need to validate the detail according to it 
     //
 };
-//2.student
-class Student: public User{
-private:
-    vector<int> attemptedExamIds;
-public:
-    Student(int id,const string& name,const sting& pass):user(id,name,pass){
-
-    }
-    string getRole() const override{
-        return "Student";
-    }
-    void displayDashboard() const override{
-        cout << "\n--- Student Dashboard ---\n";
-        cout << "Welcome, " << getName() << '\n';
-        cout << "1. View available exams\n";
-        cout << "2. Take an exam\n";
-        cout << "3. View previous results\n";
-        cout << "4. View solutions\n";
-        cout << "5. View my rank\n";
-    }
-     void takeTest(int examId) {
-        // to do which means need to take the test: Load exam, accept answers and submit.
-        attemptedExamIds.push_back(examId);
-    }
-     void viewResults() const {
-        // TODO: Retrieve this student's exam results.
-    }
-      void viewSolutions(int examId) const {
-        // TODO: Show solutions when permitted.
-    }
-     void viewRank() const {
-        // TODO: Retrieve the student's rank.
-    }
-};
-//3. teacher class 
-class  Teacher: public User{
-    private:
-    vector<int> createdExamIds;
-
-public:
-    Teacher(int id, const string& name, const string& pass)
-        : User(id, name, pass) {}
-
-    string getRole() const override {
-        return "Teacher";
-    }
-
-    void displayDashboard() const override {
-        cout << "\n--- Teacher Dashboard ---\n";
-        cout << "Welcome, " << getName() << '\n';
-        cout << "1. Create questions\n";
-        cout << "2. Create and publish exams\n";
-        cout << "3. Add solutions\n";
-        cout << "4. View student results\n";
-        cout << "5. View class analytics\n";
-        cout << "6. View student rankings\n";
-    }
-
-    void createExam() {
-        // TODO: Build an exam and save its ID.
-    }
-
-    void addQuestion(int examId) {
-        // TODO: Add a question to an exam.
-    }
-
-    void addSolution(int questionId) {
-        // TODO: Add an explanation to a question.
-    }
-
-    void viewClassAnalytics() const {
-        // TODO: Calculate class performance.
-    }
-
-    void viewStudentRankings() const {
-        // TODO: Display ranked exam results.
-    }
-}
 //4.questions 
 // class of the questions and opotions and answers 
 // with options and soltions 
@@ -152,6 +74,10 @@ public:
         return questionId;
     }
 
+    string getStatement() const{
+        return statement;
+    }
+
     double getMarks() const {
         return marks;
     }
@@ -167,7 +93,9 @@ public:
     bool checkAnswer(int answer) const {
         return answer == correctOption;
     }
-
+    void setExplanation(const string& exp) {
+            explanation = exp;
+    }
     void showSolution() const {
         cout << "Explanation: " << explanation << '\n';
     }
@@ -210,6 +138,30 @@ public:
         }
     }
 
+      bool hasQuestionId(int id) const {
+        for (const Question& q : questions) {
+            if (q.getQuestionId() == id) return true;
+        }
+        return false;
+    }
+
+    bool hasQuestionStatement(const string& text) const {
+        for (const Question& q : questions) {
+            if (q.getStatement() == text) return true;
+        }
+        return false;
+    }
+
+    bool addSolution(int questionId, const string& explanation) {
+        for (Question& q : questions) {
+            if (q.getQuestionId() == questionId) {
+                q.setExplanation(explanation);
+                return true;
+            }
+        }
+        return false;
+    }
+
     double getTotalMarks() const {
         double total = 0;
 
@@ -222,6 +174,244 @@ public:
 
     void conductExam() const {
         // TODO: Implement timed examination and submission.
+        double score=0;
+        for(int i=0;i<questions.size();i++){
+            int ans;
+            cout<<"Question  "<<i+1<<endl;
+            questions[i].displayQuestion();
+          cout << "Please enter the option: ";
+            cin >> ans;
+            if (questions[i].checkAnswer(ans)) {
+                score += questions[i].getMarks();
+            }
+        }
+        cout << "Score: " << score << " / " << getTotalMarks() << '\n';
+    }
+};
+
+//2.student
+class Student: public User{
+private:
+    vector<int> attemptedExamIds;
+public:
+    Student(int id,const string& name,const string& pass):User(id,name,pass){
+
+    }
+    string getRole() const override{
+        return "Student";
+    }
+    void displayDashboard()  override{
+        cout << "\n--- Student Dashboard ---\n";
+        cout << "Welcome, " << getName() << '\n';
+        cout << "1. View available exams\n";
+        cout << "2. Take an exam\n";
+        cout << "3. View previous results\n";
+        cout << "4. View solutions\n";
+        cout << "5. View my rank\n";
+    }
+      void takeTest(int examId) {
+        // TODO: Connect this student to the shared exam service.
+        // The current class has no conductExam(studentId, examId) function.
+        attemptedExamIds.push_back(examId);
+    }
+     void viewResults() const {
+        // TODO: Retrieve this student's exam results.
+    }
+      void viewSolutions(int examId) const {
+        // TODO: Show solutions when permitted.
+    }
+     void viewRank() const {
+        // TODO: Retrieve the student's rank.
+    }
+};
+//3. teacher class 
+class  Teacher: public User{
+    private:
+    vector<Exam> createdExamIds;
+
+public:
+    Teacher(int id, const string& name, const string& pass)
+        : User(id, name, pass) {}
+
+    string getRole() const override {
+        return "Teacher";
+    }
+
+    void displayDashboard()  override {//1
+          int choice;
+        do{
+          
+        
+        cout << "\n--- Teacher Dashboard ---\n";
+        cout << "Welcome, " << getName() << '\n';
+        cout << "1. Create questions\n";
+        cout << "2. Create and publish exams\n";
+        cout << "3. Add solutions\n";
+        cout << "4. View student results\n";
+        cout << "5. View class analytics\n";
+        cout << "6. View student rankings\n";
+        cout << "7.To exit ot logout ";
+        cout<<"Enter your valid choice ";
+        cin>>choice;
+        if(choice==1){
+            int examid;
+            cout<<"Enter the exam id ";
+            cin>>examid;
+            addQuestion(examid);
+        }
+        else if(choice==2){
+                createExam();
+        }
+        else if(choice==3){
+            int questionId;
+            cout<<" Enter the question Id\t";
+            cin>>questionId;
+            int examid;
+            cout<<"Enter the ExamId  ";
+            cin>>examid;
+            addSolution(examid,questionId);
+        }
+        else if(choice==4){
+            
+        }
+        else if(choice==5){
+            viewClassAnalytics();
+        }
+        else if(choice==6){
+            viewStudentRankings();
+        }
+        else if(choice==7){
+            cout<<"You are log out succesfully "<<endl;
+        }
+        else{
+            cout<<"please Enter a valid choice from the above "<<endl;
+        }
+        }while(choice!=7);
+        
+
+    }
+    void createExam() {
+        int examId, duration;
+        string title;
+        cout << "Enter Exam ID: ";
+        cin >> examId;
+        for (const auto& exam : createdExamIds) {
+            if (exam.getExamId() == examId) {
+                cout << "Exam ID already exists.\n";
+                return;
+            }
+        }
+        cout << "Enter exam title: ";
+        getline(cin >> ws, title);
+        cout << "Enter duration in minutes: ";
+        cin >> duration;
+        if (duration <= 0) {
+            cout << "Duration must be greater than zero.\n";
+            return;
+        }
+        createdExamIds.emplace_back(examId, title, duration);
+        cout << "Exam created successfully.\n";
+    }
+
+    void addQuestion(int examId) {
+    int questionId;
+    string statement;
+    vector<string> options;
+    int correctOption;
+    int marks;
+    string explanation;
+    for (auto& exam : createdExamIds) {
+        if (exam.getExamId() == examId) {
+            if (exam.isPublished()) {
+                cout << "Cannot add questions to a published exam.\n";
+                return;
+            }
+
+            cout << "Enter Question ID: ";
+            cin >> questionId;
+
+            // NEW: Check for duplicate question ID
+            if (exam.hasQuestionId(questionId)) {
+                cout << "Question ID already exists in this exam.\n";
+                return;
+            }
+            cout << "Enter question statement: ";
+            getline(cin >> ws, statement);
+
+            // NEW: Check for duplicate question statement
+            if (exam.hasQuestionStatement(statement)) {
+                cout << "This question already exists in this exam.\n";
+                return;
+            }
+            for (int i = 0; i < 4; i++) {
+                string option;
+                cout << "Enter option " << i + 1 << ": ";
+                getline(cin >> ws, option);
+                options.push_back(option);
+            }
+
+            cout << "Enter correct option (1-4): ";
+            cin >> correctOption;
+
+            if (correctOption < 1 || correctOption > 4) {
+                cout << "Invalid correct option.\n";
+                return;
+            }
+
+            cout << "Enter marks: ";
+            cin >> marks;
+
+            if (marks <= 0) {
+                cout << "Marks must be greater than zero.\n";
+                return;
+            }
+
+            cout << "Enter solution/explanation: ";
+            getline(cin >> ws, explanation);
+
+            Question newQuestion(
+                questionId,
+                statement,
+                options,
+                correctOption,
+                explanation,
+                marks
+            );
+
+            // Keep the original approach
+            exam.addQuestion(newQuestion);
+
+            cout << "Question added successfully!\n";
+            return;
+        }
+    }
+
+    cout << "Exam ID not Found.\n";
+}
+
+  void addSolution(int examId, int questionId) {
+        for (auto& exam : createdExamIds) {
+            if (exam.getExamId() == examId) {
+                string explanation;
+                cout << "Enter solution/explanation: ";
+                getline(cin >> ws, explanation);
+                if (exam.addSolution(questionId, explanation)) {
+                    cout << "Solution updated successfully.\n";
+                } else {
+                    cout << "Question ID not found in this exam.\n";
+                }
+                return;
+            }
+        }
+        cout << "Exam ID not found.\n";
+    }
+
+    void viewClassAnalytics() const {
+        // TODO: Calculate class performance.
+    }
+
+    void viewStudentRankings() const {
+        // TODO: Display ranked exam results.
     }
 };
 //6.exam result 
@@ -418,17 +608,16 @@ private:
     Admin admin;
 
 public:
+        // registering and login happening sucesfully
     void run() {
         int choice;
-
         do {
-            cout << "\n===== EXAMFORGE =====\n";
+            cout << "\n===== Exam System =====\n";
             cout << "1. Student signup\n";
             cout << "2. Login\n";
             cout << "0. Exit\n";
             cout << "Choice: ";
             cin >> choice;
-
             if (choice == 1) {
                 int id;
                 string name, pass;
@@ -453,7 +642,7 @@ public:
                 int id;
                 string pass;
 
-                cout << "Enter user ID: ";
+                cout<< "Enter user ID: ";
                 cin >> id;
 
                 cout << "Enter password: ";
@@ -475,6 +664,7 @@ public:
         } while (choice != 0);
     }
 };
+// when the function is runnning then it is auotmatically call the class and enters in to the class
 
 int main() {
     ExamSystem system;
