@@ -21,12 +21,18 @@ private:
     friend class Admin;
     // here constructor is called 
 protected:
-        User(int id,const string& n,const string& p){
-            userid=id;
-            password=p;
-            active=true;
-            name=n;
-        }
+        //based on the research this is not such efficient function to call constructors and functions
+        //the second and written appraoch is better because the the intialzed whn there is const reference passing 
+
+        // User(int id,const string& n,const string& p){
+        //     userid=id;
+        //     password=p;
+        //     active=true;
+        //     name=n;
+        // }
+        //so this is the better approch then the above one 
+        User(int id,const string& n,const string& p):
+        userid(id),password(p),name(n),active(true){}
 public:
         virtual ~User()=default;
         int getUserId() const{
@@ -49,7 +55,7 @@ public:
     //then we have to ask for the sign in and sign up for the user then need to validate the detail according to it 
     //
 };
-//4.questions 
+//2.questions 
 // class of the questions and opotions and answers 
 // with options and soltions 
 class Question {
@@ -100,7 +106,8 @@ public:
         cout << "Explanation: " << explanation << '\n';
     }
 };
-//5. creating the exam
+// 3.Exam class
+// creating the exam
 //creating a exam which now includes the time and the set of questions and time in it 
 // which exam  means to does not overlap the exam schedule
 class Exam {
@@ -127,15 +134,19 @@ public:
     bool isPublished() const {
         return published;
     }
-
+    size_t getQuestionCount() const {
+        return questoins.size();
+    }
     void publish() {
-        published = true;
+        if(!questions.empty())published=true;
     }
 
-    void addQuestion(const Question& question) {
-        if (!published) {
-            questions.push_back(question);
+    bool addQuestion(const Question& question) {
+        if (published) {
+            return false;
         }
+        questions.push_back(question);
+        return true;
     }
 
       bool hasQuestionId(int id) const {
@@ -153,6 +164,7 @@ public:
     }
 
     bool addSolution(int questionId, const string& explanation) {
+        if(published)return false;
         for (Question& q : questions) {
             if (q.getQuestionId() == questionId) {
                 q.setExplanation(explanation);
@@ -175,21 +187,223 @@ public:
     void conductExam() const {
         // TODO: Implement timed examination and submission.
         double score=0;
-        for(int i=0;i<questions.size();i++){
+        cout<<"\nStarting exam: "<<title<<'\n';
+        cout<<" Duration : "<<durationMinutes<<" miniutes\n";
+        cout<<"Total marks: "<<getTotalMarks()<<"\n\n";
+        for(int  i=0;i<questions.size();i++){
             int ans;
             cout<<"Question  "<<i+1<<endl;
             questions[i].displayQuestion();
-          cout << "Please enter the option: ";
-            cin >> ans;
+            cout << "Please enter the option: (1-4) ";
+           while (!(cin >> answer) || answer < 1 || answer > 4) {
+                cout << "Invalid input. Enter an option from 1 to 4: ";
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
             if (questions[i].checkAnswer(ans)) {
                 score += questions[i].getMarks();
             }
         }
-        cout << "Score: " << score << " / " << getTotalMarks() << '\n';
+        cout<<"Exam submitted. "<<endl;
+        cout << "Score: " << score << " \ " << getTotalMarks() << '\n';
+    }
+    void showSolution() const{
+        if(questions.empty()){
+            cout<<"This exam has no questions.\n";
+            return;
+        }
+        for(int i=0;i<questions.size();i++){
+            cout<<"\n Question  "<<i+1<<" :\n";
+            questions[i].displayQuestion();
+            questions[i].showSolution();
+        }
+    }
+};
+//4.Result  class 
+// get the marks of the each student 
+// and min max marks of the class and required updates 
+class ExamResult {
+private:
+    int studentId;
+    int examId;
+    double obtainedMarks;
+    double totalMarks;
+    bool submitted;
+
+public:
+    ExamResult(int sid, int eid, double score, double total)
+        : studentId(sid), examId(eid),
+          obtainedMarks(score), totalMarks(total),
+          submitted(true) {}
+
+    int getStudentId() const {
+        return studentId;
+    }
+
+    int getExamId() const {
+        return examId;
+    }
+
+    double getScore() const {
+        return obtainedMarks;
+    }
+
+    double getTotalMarks() const {
+        return totalMarks;
+    }
+
+    bool isSubmitted() const {
+        return submitted;
+    }
+
+    double getAccuracy() const {
+        if (totalMarks <= 0) return 0.0;
+
+        return (obtainedMarks / totalMarks) * 100.0;
+    }
+
+    bool hasPassed(double passPercentage = 40.0) const {
+        return getAccuracy() >= passPercentage;
+    }
+};
+//5.ananlytics class
+// analysis of the  class and understanding level of the students and difficult of paper
+// my new plan but optional like according to average of the paper i can get the difficulty level of the paper and get the result 
+class Analytics {
+public:
+    static double averageMarks(
+        const vector<ExamResult>& results) {
+
+        if (results.empty()) return 0.0;
+
+        double sum = 0;
+
+        for (const ExamResult& r : results) {
+            sum += r.getScore();
+        }
+
+        return sum / results.size();
+    }
+
+    static double highestMarks(
+        const vector<ExamResult>& results) {
+
+        if (results.empty()) return 0.0;
+
+        double highest = results[0].getScore();
+
+        for (const ExamResult& r : results) {
+            highest = max(highest, r.getScore());
+        }
+
+        return highest;
+    }
+
+    static double lowestMarks(
+        const vector<ExamResult>& results) {
+
+        if (results.empty()) return 0.0;
+
+        double lowest = results[0].getScore();
+
+        for (const ExamResult& r : results) {
+            lowest = min(lowest, r.getScore());
+        }
+
+        return lowest;
+    }
+
+    static int countPassed(
+        const vector<ExamResult>& results) {
+
+        int count = 0;
+
+        for (const ExamResult& r : results) {
+            if (r.hasPassed()) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    static int countFailed(
+        const vector<ExamResult>& results) {
+
+        return static_cast<int>(results.size())
+               - countPassed(results);
     }
 };
 
-//2.student
+//6. central Exam and result sservice
+//6.Exam service class 
+//11.class Exam services
+// to manage the exam and the result and to do not overlap between the system 
+// to make the more structred 
+class ExamService {
+private:
+    vector<Exam> exams;
+    vector<ExamResult> results;
+
+public:
+    // Store a newly created exam
+    bool addExam(const Exam& exam) {
+        if(getexam(exam.getExamId())!=nullptr)
+        return false;
+        exams.push_back(exam);
+        return true;
+    }
+
+    // Find an exam using its ID
+    Exam* getExam(int examId) {
+        for (auto& exam : exams) {
+            if (exam.getExamId() == examId) {
+                return &exam;
+            }
+        }
+        return nullptr;
+    }
+    //getting all the exams 
+    const vector<Exam>& getallExams() const{
+        return exams;
+    }
+    const vector<ExamResult>& getAllResults() canst {
+        return result;
+    }
+    //get student data on the result 
+    vector<ExamResult> getResultsForStudent(int studentId) const{
+        vector<ExamResult> found;
+        for(const auto& r :results){
+            if(r.getStudentId()==studentId)
+            found.push_back(r);
+        }
+        return found;
+    }
+   vector<ExamResult> getResultsForExam(int examId) const{
+    vector<ExamResult> found;
+    for(const auto& r:results){
+        if(r.getExamId()==examId)
+        found.push_back(r);
+    }
+    return found;
+
+   }
+   bool hasResult(int studentId,int examId) const{
+    for(const auto& r: results){
+        if(r.getStudentId()==studentId&&r.getExamId()==examId)
+        return true;
+    }
+    return false;
+   }
+   //saving the data of the all students
+      bool saveResult(const ExamResult& result) {
+        if (hasResult(result.getStudentId(), result.getExamId())) return false;
+        results.push_back(result);
+        return true;
+    }
+};
+
+//7.student
 class Student: public User{
 private:
     vector<int> attemptedExamIds;
@@ -201,6 +415,7 @@ public:
         return "Student";
     }
     void displayDashboard()  override{
+        int choice;
         cout << "\n--- Student Dashboard ---\n";
         cout << "Welcome, " << getName() << '\n';
         cout << "1. View available exams\n";
@@ -208,12 +423,11 @@ public:
         cout << "3. View previous results\n";
         cout << "4. View solutions\n";
         cout << "5. View my rank\n";
+        cout<<"Please Enter your choice ";
+        cin>>choice;
+    
     }
-      void takeTest(int examId) {
-        // TODO: Connect this student to the shared exam service.
-        // The current class has no conductExam(studentId, examId) function.
-        attemptedExamIds.push_back(examId);
-    }
+      void takeTest(int examId, ExamService& service);  
      void viewResults() const {
         // TODO: Retrieve this student's exam results.
     }
@@ -236,8 +450,11 @@ public:
     string getRole() const override {
         return "Teacher";
     }
-
-    void displayDashboard()  override {//1
+    //using the fuction overloding 
+    void displayDashboard() override {
+    cout << "\nTeacher dashboard requires ExamService.\n";
+}
+    void displayDashboard(ExamService& service)   {//1
           int choice;
         do{
           
@@ -260,7 +477,7 @@ public:
             addQuestion(examid);
         }
         else if(choice==2){
-                createExam();
+                createExam(service);
         }
         else if(choice==3){
             int questionId;
@@ -290,28 +507,7 @@ public:
         
 
     }
-    void createExam() {
-        int examId, duration;
-        string title;
-        cout << "Enter Exam ID: ";
-        cin >> examId;
-        for (const auto& exam : createdExamIds) {
-            if (exam.getExamId() == examId) {
-                cout << "Exam ID already exists.\n";
-                return;
-            }
-        }
-        cout << "Enter exam title: ";
-        getline(cin >> ws, title);
-        cout << "Enter duration in minutes: ";
-        cin >> duration;
-        if (duration <= 0) {
-            cout << "Duration must be greater than zero.\n";
-            return;
-        }
-        createdExamIds.emplace_back(examId, title, duration);
-        cout << "Exam created successfully.\n";
-    }
+   void createExam(ExamService& service);
 
     void addQuestion(int examId) {
     int questionId;
@@ -414,121 +610,49 @@ public:
         // TODO: Display ranked exam results.
     }
 };
-//6.exam result 
-// get the marks of the each student 
-// and min max marks of the class and required updates 
-class ExamResult {
-private:
-    int studentId;
-    int examId;
-    double obtainedMarks;
-    double totalMarks;
-    bool submitted;
 
-public:
-    ExamResult(int sid, int eid, double score, double total)
-        : studentId(sid), examId(eid),
-          obtainedMarks(score), totalMarks(total),
-          submitted(true) {}
 
-    int getStudentId() const {
-        return studentId;
+void Student::takeTest(int examId, ExamService& service) {
+    Exam* exam = service.getExam(examId);
+
+    if (exam == nullptr) {
+        cout << "Exam not found.\n";
+        return;
     }
 
-    int getExamId() const {
-        return examId;
+    attemptedExamIds.push_back(examId);
+
+    exam->conductExam();
+}
+void Teacher::createExam(ExamService& service) {
+    int examId, duration;
+    string title;
+
+    cout << "Enter Exam ID: ";
+    cin >> examId;
+
+    if (service.getExam(examId) != nullptr) {
+        cout << "Exam ID already exists.\n";
+        return;
     }
 
-    double getScore() const {
-        return obtainedMarks;
+    cout << "Enter exam title: ";
+    getline(cin >> ws, title);
+
+    cout << "Enter duration in minutes: ";
+    cin >> duration;
+
+    if (duration <= 0) {
+        cout << "Duration must be greater than zero.\n";
+        return;
     }
 
-    double getTotalMarks() const {
-        return totalMarks;
-    }
+    Exam exam(examId, title, duration);
+    service.addExam(exam);
 
-    bool isSubmitted() const {
-        return submitted;
-    }
+    cout << "Exam created successfully.\n";
+}
 
-    double getAccuracy() const {
-        if (totalMarks <= 0) return 0.0;
-
-        return (obtainedMarks / totalMarks) * 100.0;
-    }
-
-    bool hasPassed(double passPercentage = 40.0) const {
-        return getAccuracy() >= passPercentage;
-    }
-};
-//7.ananlytics 
-// analysis of the  class and understanding level of the students and difficult of paper
-// my new plan but optional like according to average of the paper i can get the difficulty level of the paper and get the result 
-class Analytics {
-public:
-    static double averageMarks(
-        const vector<ExamResult>& results) {
-
-        if (results.empty()) return 0.0;
-
-        double sum = 0;
-
-        for (const ExamResult& r : results) {
-            sum += r.getScore();
-        }
-
-        return sum / results.size();
-    }
-
-    static double highestMarks(
-        const vector<ExamResult>& results) {
-
-        if (results.empty()) return 0.0;
-
-        double highest = results[0].getScore();
-
-        for (const ExamResult& r : results) {
-            highest = max(highest, r.getScore());
-        }
-
-        return highest;
-    }
-
-    static double lowestMarks(
-        const vector<ExamResult>& results) {
-
-        if (results.empty()) return 0.0;
-
-        double lowest = results[0].getScore();
-
-        for (const ExamResult& r : results) {
-            lowest = min(lowest, r.getScore());
-        }
-
-        return lowest;
-    }
-
-    static int countPassed(
-        const vector<ExamResult>& results) {
-
-        int count = 0;
-
-        for (const ExamResult& r : results) {
-            if (r.hasPassed()) {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    static int countFailed(
-        const vector<ExamResult>& results) {
-
-        return static_cast<int>(results.size())
-               - countPassed(results);
-    }
-};
 //8. admin class 
 //now giving the power to the admin such he can get the acess of the every student 
 // Every thing like gettnig the password of ths each student and anlaysis of the each one
@@ -606,6 +730,7 @@ class ExamSystem {
 private:
     AuthService auth;
     Admin admin;
+    ExamService examService;
 
 public:
         // registering and login happening sucesfully
@@ -655,7 +780,12 @@ public:
                          << user->getRole() << '\n';
 
                     // Runtime polymorphism:
-                    user->displayDashboard();
+                   if (auto* teacher =dynamic_cast<Teacher*>(user)) {
+                                teacher->displayDashboard(examService);
+                    }
+                    else {
+                                user->displayDashboard();
+                    }
                 } else {
                     cout << "Invalid credentials or inactive account.\n";
                 }
