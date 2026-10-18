@@ -381,7 +381,6 @@ public:
             }
         } while (choice != 0);
     }
-
     void viewAvailableExams(const ExamService& service) const {
         bool found = false;
         cout << "\n--- Available Exams ---\n";

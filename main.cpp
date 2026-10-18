@@ -414,31 +414,165 @@ public:
     string getRole() const override{
         return "Student";
     }
-    void displayDashboard()  override{
+    void displayDashboard() override{
+        cout<<"\n Student dashboard needs the exam service  as the argument.\n";
+    }
+    void displayDashboard(const ExamService& service){
         int choice;
-        cout << "\n--- Student Dashboard ---\n";
+        do{
+            cout << "\n--- Student Dashboard ---\n";
         cout << "Welcome, " << getName() << '\n';
         cout << "1. View available exams\n";
         cout << "2. Take an exam\n";
         cout << "3. View previous results\n";
         cout << "4. View solutions\n";
         cout << "5. View my rank\n";
+        cout<<"6.Logout\n";
         cout<<"Please Enter your choice ";
-        cin>>choice;
+        if (!(cin >> choice)) {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                choice = -1;
+            }
+            
+        }
+        switch(choice){
+            case 1:
+                viewAvailableExams(service);
+                break;
+            case 2:{
+                    int examid;
+                cout<<"Enter the Exam Id : ";
+                if(cin>>examid)
+                takeTest(examid,service);
+                else{
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(),'\n');
+                    cout<<"Invalid Exam Id ."<<endl;
+                }
+                break;
+            }
+            case 3:
+                viewResults(service);
+                break;
+            case 4:{
+                int examid;
+                cout<<"Enter the Exam Id : ";
+                if(cin>>examid)
+                viewSolutions(examid,service);
+                else{
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(),'\n');
+                    cout<<"Invalid Exam Id ."<<endl;
+                }
+                break;
+            }
+            case 5:
+                viewRank(service);
+                break;
+            case 6:
+                cout<<"Logged out sucsessfully.\n";
+                break;
+            default:
+                cout<<"Please Enter the valid input "<<endl;
+            
+        }while(choice!=6);
+        
     
     }
-      void takeTest(int examId, ExamService& service);  
-     void viewResults() const {
-        // TODO: Retrieve this student's exam results.
+    void viewAvailableExams(const ExamService& service) const{
+        bool found =false;
+        cout<<"\n-----Available Exams --\n";
+        for(const auto& exam :service.getAllExams()){
+            if(exam.isPublished()){
+                found =true;
+                 cout << "ID: " << exam.getExamId()
+                     << " | Title: " << exam.getTitle()
+                     << " | Duration: " << exam.getDuration() << " minutes"
+                     << " | Questions: " << exam.getQuestionCount()
+                     << " | Total marks: " << exam.getTotalMarks() << '\n';
+
+            }
+        }
+        if(!found)
+        cout<<"no published eams are available .\n";
     }
-      void viewSolutions(int examId) const {
-        // TODO: Show solutions when permitted.
+    void takeTest(int examId,const ExamService& service)  {
+            Exam* exam=service.getExam(examId);
+            if(exam==nullptr||exam->isPublished()){
+                cout<<"no Exams are present" <<endl;
+                cout<<"Published Exam is not found "<<endl;
+            }
+             if (service.hasResult(getUserId(), examId)) {
+            cout << "You have already attempted this exam.\n";
+            return;
+        }
+
+        double score = exam->conductExam();
+        ExamResult result(getUserId(), examId, score, exam->getTotalMarks());
+
+        if (service.saveResult(result)) {
+            attemptedExamIds.push_back(examId);
+            cout << "Result saved successfully.\n";
+        } else {
+            cout << "Could not save result: a result already exists.\n";
+        }
     }
-     void viewRank() const {
-        // TODO: Retrieve the student's rank.
+
+
+     void viewResults(const ExamServise& service) const {
+        vector<ExamResult> myResults=service.getResultsForStudent(getUserId());
+        if(myResults.empty()){
+            cout<<" You have not comleted any exms yet."<<endl;
+            return ;
+        }
+         cout << "\n--- Previous Results ---\n";
+        for (const auto& result : myResults) {
+            const Exam* exam = service.getExam(result.getExamId());
+            cout << "Exam ID: " << result.getExamId();
+            if (exam != nullptr) cout << " | " << exam->getTitle();
+            cout << " | Score: " << result.getScore() << " / "
+                 << result.getTotalMarks()
+                 << " | Percentage: " << result.getAccuracy() << "%"
+                 << " | " << (result.hasPassed() ? "PASS" : "FAIL") << '\n';
+        }
+    }
+      void viewSolutions(int examId,ExamService& service) const {
+       const Exam* exam=service.getExam(examId);
+       if(exam==nullptr||exam->isPublished()){
+        cout<<"Exma is not found."<<endl;
+        return ;
+       }
+       if(!service.hasResult(getUserId(),examId)){
+        cout<<"You can view the solutions only after the exams"<<endl;
+        return;
+        }
+        exam->showSolution();
+    }
+     void viewRank(const ExamService& service) const {
+        vector<ExamResult> all=service.getallResults();
+        vector<ExamResult> mine=service.getResultsForStudent(getUserId());
+        for(const auto& r: mine){
+            vector<ExamResult> sameExam= service.getResultsForExam(myreult.getExamId());
+            sort(sameExam.begin(),sameExam.end(),
+            [](const ExamResult& a,const ExamResult& b){
+                return a.getscore()>b.getScore();
+            });
+            int rank = 1;
+            for (const auto& r : sameExam) {
+                if (r.getStudentId() == getUserId()) break;
+                if (r.getScore() > myResult.getScore()) ++rank;
+            }
+
+            const Exam* exam = service.getExam(myResult.getExamId());
+            cout << "Exam " << myResult.getExamId();
+            if (exam != nullptr) cout << " (" << exam->getTitle() << ")";
+            cout << ": Rank " << rank << " out of " << sameExam.size() << '\n';
+            }
+        }
     }
 };
-//3. teacher class 
+//8. teacher class
 class  Teacher: public User{
     private:
     vector<Exam> createdExamIds;
