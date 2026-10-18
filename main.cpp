@@ -5,6 +5,7 @@
 #include<algorithm>
 #include<numeric>
 #include<cstdio>
+#include<limits>
 using namespace std;
 
 class Admin;
@@ -130,12 +131,14 @@ public:
     string getTitle() const {
         return title;
     }
-
+    int getDuration() const {
+    return durationMinutes;
+    }
     bool isPublished() const {
         return published;
     }
     size_t getQuestionCount() const {
-        return questoins.size();
+        return questions.size();
     }
     void publish() {
         if(!questions.empty())published=true;
@@ -184,28 +187,29 @@ public:
         return total;
     }
 
-    void conductExam() const {
+    double conductExam() const {
         // TODO: Implement timed examination and submission.
         double score=0;
         cout<<"\nStarting exam: "<<title<<'\n';
         cout<<" Duration : "<<durationMinutes<<" miniutes\n";
         cout<<"Total marks: "<<getTotalMarks()<<"\n\n";
         for(int  i=0;i<questions.size();i++){
-            int ans;
             cout<<"Question  "<<i+1<<endl;
             questions[i].displayQuestion();
             cout << "Please enter the option: (1-4) ";
+            int answer;
            while (!(cin >> answer) || answer < 1 || answer > 4) {
                 cout << "Invalid input. Enter an option from 1 to 4: ";
                 cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
             }
-            if (questions[i].checkAnswer(ans)) {
+            if (questions[i].checkAnswer(answer)) {
                 score += questions[i].getMarks();
             }
         }
         cout<<"Exam submitted. "<<endl;
-        cout << "Score: " << score << " \ " << getTotalMarks() << '\n';
+        cout << "Score: " << score << " / " << getTotalMarks() << '\n';
+        return score;
     }
     void showSolution() const{
         if(questions.empty()){
@@ -348,27 +352,38 @@ private:
 public:
     // Store a newly created exam
     bool addExam(const Exam& exam) {
-        if(getexam(exam.getExamId())!=nullptr)
+        if(getExam(exam.getExamId())!=nullptr)
         return false;
         exams.push_back(exam);
         return true;
     }
 
     // Find an exam using its ID
-    Exam* getExam(int examId) {
-        for (auto& exam : exams) {
-            if (exam.getExamId() == examId) {
-                return &exam;
-            }
+  // For modifying an exam
+Exam* getExam(int examId) {
+    for (auto& exam : exams) {
+        if (exam.getExamId() == examId) {
+            return &exam;
         }
-        return nullptr;
     }
+    return nullptr;
+}
+
+// For reading an exam through a const service
+const Exam* getExam(int examId) const {
+    for (const auto& exam : exams) {
+        if (exam.getExamId() == examId) {
+            return &exam;
+        }
+    }
+    return nullptr;
+}
     //getting all the exams 
-    const vector<Exam>& getallExams() const{
+    const vector<Exam>& getAllExams() const{
         return exams;
     }
-    const vector<ExamResult>& getAllResults() canst {
-        return result;
+    const vector<ExamResult>& getAllResults() const {
+        return results;
     }
     //get student data on the result 
     vector<ExamResult> getResultsForStudent(int studentId) const{
@@ -417,7 +432,7 @@ public:
     void displayDashboard() override{
         cout<<"\n Student dashboard needs the exam service  as the argument.\n";
     }
-    void displayDashboard(const ExamService& service){
+    void displayDashboard(ExamService& service){
         int choice;
         do{
             cout << "\n--- Student Dashboard ---\n";
@@ -427,15 +442,14 @@ public:
         cout << "3. View previous results\n";
         cout << "4. View solutions\n";
         cout << "5. View my rank\n";
-        cout<<"6.Logout\n";
-        cout<<"Please Enter your choice ";
+        cout << "6.Logout\n";
+        cout << "Please Enter your choice ";
         if (!(cin >> choice)) {
                 cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 choice = -1;
             }
             
-        }
         switch(choice){
             case 1:
                 viewAvailableExams(service);
@@ -475,10 +489,8 @@ public:
                 break;
             default:
                 cout<<"Please Enter the valid input "<<endl;
-            
-        }while(choice!=6);
-        
-    
+        }       
+        }while(choice!=6);      
     }
     void viewAvailableExams(const ExamService& service) const{
         bool found =false;
@@ -497,9 +509,9 @@ public:
         if(!found)
         cout<<"no published eams are available .\n";
     }
-    void takeTest(int examId,const ExamService& service)  {
+    void takeTest(int examId, ExamService& service)  {
             Exam* exam=service.getExam(examId);
-            if(exam==nullptr||exam->isPublished()){
+            if(exam==nullptr||!exam->isPublished()){
                 cout<<"no Exams are present" <<endl;
                 cout<<"Published Exam is not found "<<endl;
             }
@@ -520,7 +532,7 @@ public:
     }
 
 
-     void viewResults(const ExamServise& service) const {
+     void viewResults(const ExamService& service) const {
         vector<ExamResult> myResults=service.getResultsForStudent(getUserId());
         if(myResults.empty()){
             cout<<" You have not comleted any exms yet."<<endl;
@@ -537,9 +549,9 @@ public:
                  << " | " << (result.hasPassed() ? "PASS" : "FAIL") << '\n';
         }
     }
-      void viewSolutions(int examId,ExamService& service) const {
+      void viewSolutions(int examId,const ExamService& service) const {
        const Exam* exam=service.getExam(examId);
-       if(exam==nullptr||exam->isPublished()){
+       if(exam==nullptr||!exam->isPublished()){
         cout<<"Exma is not found."<<endl;
         return ;
        }
@@ -550,28 +562,47 @@ public:
         exam->showSolution();
     }
      void viewRank(const ExamService& service) const {
-        vector<ExamResult> all=service.getallResults();
-        vector<ExamResult> mine=service.getResultsForStudent(getUserId());
-        for(const auto& r: mine){
-            vector<ExamResult> sameExam= service.getResultsForExam(myreult.getExamId());
-            sort(sameExam.begin(),sameExam.end(),
-            [](const ExamResult& a,const ExamResult& b){
-                return a.getscore()>b.getScore();
-            });
-            int rank = 1;
-            for (const auto& r : sameExam) {
-                if (r.getStudentId() == getUserId()) break;
-                if (r.getScore() > myResult.getScore()) ++rank;
-            }
+    vector<ExamResult> mine =
+        service.getResultsForStudent(getUserId());
 
-            const Exam* exam = service.getExam(myResult.getExamId());
-            cout << "Exam " << myResult.getExamId();
-            if (exam != nullptr) cout << " (" << exam->getTitle() << ")";
-            cout << ": Rank " << rank << " out of " << sameExam.size() << '\n';
+    if (mine.empty()) {
+        cout << "Take an exam first to get a rank.\n";
+        return;
+    }
+
+    for (const auto& myResult : mine) {
+        vector<ExamResult> sameExam =
+            service.getResultsForExam(myResult.getExamId());
+
+        sort(sameExam.begin(), sameExam.end(),
+             [](const ExamResult& a, const ExamResult& b) {
+                 return a.getScore() > b.getScore();
+             });
+
+        int rank = 1;
+
+        for (const auto& r : sameExam) {
+            if (r.getStudentId() == getUserId()) break;
+
+            if (r.getScore() > myResult.getScore()) {
+                ++rank;
             }
         }
+
+        const Exam* exam =
+            service.getExam(myResult.getExamId());
+
+        cout << "Exam " << myResult.getExamId();
+
+        if (exam != nullptr) {
+            cout << " (" << exam->getTitle() << ")";
+        }
+
+        cout << ": Rank " << rank
+             << " out of " << sameExam.size() << '\n';
     }
-};
+}
+    };
 //8. teacher class
 class  Teacher: public User{
     private:
@@ -584,6 +615,7 @@ public:
     string getRole() const override {
         return "Teacher";
     }
+
     //using the fuction overloding 
     void displayDashboard() override {
     cout << "\nTeacher dashboard requires ExamService.\n";
@@ -598,194 +630,343 @@ public:
         cout << "1. Create questions\n";
         cout << "2. Create and publish exams\n";
         cout << "3. Add solutions\n";
-        cout << "4. View student results\n";
-        cout << "5. View class analytics\n";
-        cout << "6. View student rankings\n";
-        cout << "7.To exit ot logout ";
+        cout << "Publish Exam\n";
+        cout << "5. View student results\n";
+        cout << "6. View class analytics\n";
+        cout << "7. View student rankings\n";
+        cout << "8.view my exams\n";
+        cout << "9.To exit ot logout ";
         cout<<"Enter your valid choice ";
-        cin>>choice;
-        if(choice==1){
-            int examid;
-            cout<<"Enter the exam id ";
-            cin>>examid;
-            addQuestion(examid);
-        }
-        else if(choice==2){
-                createExam(service);
-        }
-        else if(choice==3){
-            int questionId;
-            cout<<" Enter the question Id\t";
-            cin>>questionId;
-            int examid;
-            cout<<"Enter the ExamId  ";
-            cin>>examid;
-            addSolution(examid,questionId);
-        }
-        else if(choice==4){
-            
-        }
-        else if(choice==5){
-            viewClassAnalytics();
-        }
-        else if(choice==6){
-            viewStudentRankings();
-        }
-        else if(choice==7){
-            cout<<"You are log out succesfully "<<endl;
-        }
-        else{
-            cout<<"please Enter a valid choice from the above "<<endl;
-        }
-        }while(choice!=7);
-        
+        if (!(cin >> choice)) {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                choice = -1;
+            }
 
+            switch (choice) {
+                case 1: {
+                    int examId;
+                    cout << "Enter exam ID: ";
+                    if (cin >> examId) addQuestion(examId, service);
+                    else {
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        cout << "Invalid exam ID.\n";
+                    }
+                    break;
+                }
+                case 2:
+                    createExam(service);
+                    break;
+                case 3: {
+                    int examId, questionId;
+                    cout << "Enter exam ID: ";
+                    if (!(cin >> examId)) {
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        cout << "Invalid exam ID.\n";
+                        break;
+                    }
+                    cout << "Enter question ID: ";
+                    if (!(cin >> questionId)) {
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        cout << "Invalid question ID.\n";
+                        break;
+                    }
+                    addSolution(examId, questionId, service);
+                    break;
+                }
+                case 4: {
+                    int examId;
+                    cout << "Enter exam ID to publish: ";
+                    if (cin >> examId) publishExam(examId, service);
+                    else {
+                        cin.clear();
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                        cout << "Invalid exam ID.\n";
+                    }
+                    break;
+                }
+                case 5:
+                    viewStudentResults(service);
+                    break;
+                case 6:
+                    viewClassAnalytics(service);
+                    break;
+                case 7:
+                    viewStudentRankings(service);
+                    break;
+                case 8:
+                    viewMyExams(service);
+                    break;
+                case 9:
+                    cout << "Logged out successfully.\n";
+                    break;
+                default:
+                    cout << "Please enter a valid choice.\n";
+            }
+        } while (choice != 9);
     }
-   void createExam(ExamService& service);
+   void createExam(ExamService& service){
+    int examId,duration;
+    string title;
+    cout<<"Enter  Exam Id: ";
+    if(!(cin>>examId)){
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(),'\n');
+        cout<< "Invalid exam Id.\n";
+        return ;
+    }
+    if(service.getExam(examId)!=nullptr){
+        cout<<"Already Exam is present .\n";
+        return;
+    }
+    cout<<"Enter exam title : ";
+    getline(cin>> ws,title);
+    if(title.empty()){
+        cout<<"Exam title cannot be empty.\n";
+        return;
+    }
+     cout << "Enter duration in minutes: ";
+        if (!(cin >> duration) || duration <= 0) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Duration must be a positive number.\n";
+            return;
+        }
 
-    void addQuestion(int examId) {
+        Exam exam(examId, title, duration);
+        if (service.addExam(exam)) cout << "Exam created successfully.\n";
+        else cout << "Could not create exam. Check the ID.\n";
+   }
+    void addQuestion(int examId,ExamService& service) {
+        Exam* exam=service.getExam(examId);
+        if(exam==nullptr){
+            cout<<"No Exam is present on this Id \n";
+            return;
+        }
+        if(exam->isPublished()){
+            cout<<"Cannot add the question at this time \n";
+            return ;
+        }
     int questionId;
     string statement;
     vector<string> options;
     int correctOption;
     int marks;
     string explanation;
-    for (auto& exam : createdExamIds) {
-        if (exam.getExamId() == examId) {
-            if (exam.isPublished()) {
-                cout << "Cannot add questions to a published exam.\n";
-                return;
-            }
-
-            cout << "Enter Question ID: ";
-            cin >> questionId;
-
-            // NEW: Check for duplicate question ID
-            if (exam.hasQuestionId(questionId)) {
-                cout << "Question ID already exists in this exam.\n";
-                return;
-            }
-            cout << "Enter question statement: ";
-            getline(cin >> ws, statement);
-
-            // NEW: Check for duplicate question statement
-            if (exam.hasQuestionStatement(statement)) {
-                cout << "This question already exists in this exam.\n";
-                return;
-            }
-            for (int i = 0; i < 4; i++) {
-                string option;
-                cout << "Enter option " << i + 1 << ": ";
-                getline(cin >> ws, option);
-                options.push_back(option);
-            }
-
-            cout << "Enter correct option (1-4): ";
-            cin >> correctOption;
-
-            if (correctOption < 1 || correctOption > 4) {
-                cout << "Invalid correct option.\n";
-                return;
-            }
-
-            cout << "Enter marks: ";
-            cin >> marks;
-
-            if (marks <= 0) {
-                cout << "Marks must be greater than zero.\n";
-                return;
-            }
-
-            cout << "Enter solution/explanation: ";
-            getline(cin >> ws, explanation);
-
-            Question newQuestion(
-                questionId,
-                statement,
-                options,
-                correctOption,
-                explanation,
-                marks
-            );
-
-            // Keep the original approach
-            exam.addQuestion(newQuestion);
-
-            cout << "Question added successfully!\n";
+    cout << "Enter question ID: ";
+        if (!(cin >> questionId)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid question ID.\n";
             return;
         }
-    }
 
-    cout << "Exam ID not Found.\n";
-}
+        if (exam->hasQuestionId(questionId)) {
+            cout << "Question ID already exists in this exam.\n";
+            return;
+        }
 
-  void addSolution(int examId, int questionId) {
-        for (auto& exam : createdExamIds) {
-            if (exam.getExamId() == examId) {
-                string explanation;
-                cout << "Enter solution/explanation: ";
-                getline(cin >> ws, explanation);
-                if (exam.addSolution(questionId, explanation)) {
-                    cout << "Solution updated successfully.\n";
-                } else {
-                    cout << "Question ID not found in this exam.\n";
-                }
+        cout << "Enter question statement: ";
+        getline(cin >> ws, statement);
+        if (statement.empty()) {
+            cout << "Question statement cannot be empty.\n";
+            return;
+        }
+        if (exam->hasQuestionStatement(statement)) {
+            cout << "This question already exists in this exam.\n";
+            return;
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            string option;
+            cout << "Enter option " << i + 1 << ": ";
+            getline(cin >> ws, option);
+            if (option.empty()) {
+                cout << "Options cannot be empty. Question was not added.\n";
                 return;
             }
+            options.push_back(option);
         }
-        cout << "Exam ID not found.\n";
-    }
 
-    void viewClassAnalytics() const {
-        // TODO: Calculate class performance.
-    }
+        cout << "Enter correct option (1-4): ";
+        if (!(cin >> correctOption) || correctOption < 1 || correctOption > 4) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid correct option. Question was not added.\n";
+            return;
+        }
 
-    void viewStudentRankings() const {
-        // TODO: Display ranked exam results.
+        cout << "Enter marks: ";
+        if (!(cin >> marks) || marks <= 0) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Marks must be greater than zero. Question was not added.\n";
+            return;
+        }
+
+        cout << "Enter solution/explanation: ";
+        getline(cin >> ws, explanation);
+
+        Question question(questionId, statement, options, correctOption,
+                          explanation, marks);
+        if (exam->addQuestion(question)) cout << "Question added successfully.\n";
+        else cout << "Could not add question.\n";
+}
+
+  void addSolution(int examId, int questionId,ExamService& service) {
+        Exam* exam=service.getExam(examId);
+        if(exam==nullptr){
+            cout<<"Exam id is not found .\n";
+            return ;
+        }
+        if(exam->isPublished()){
+            cout<<"You cannot add the solution to the published exam \n";
+            return ;
+        }
+        string explanation;
+        cout << "Enter solution/explanation: ";
+        getline(cin >> ws, explanation);
+
+        if (explanation.empty()) {
+        cout << "Explanation cannot be empty.\n";
+        return;
+}
+        if(exam->addSolution(questionId,explanation)){
+            cout<<"Solution added sucessfully ";
+
+        }
+        else 
+        cout<<"Question Id not found in this exam \n";
+    }
+    void publishExam(int examId,ExamService& service){
+        Exam* exam=service.getExam(examId);
+        if(exam==nullptr){
+            cout<<"No Exam exists in this id \n";
+            return ;
+        }
+        if(exam->isPublished()){
+            cout<<"This exam is already published.\n";
+            return;
+        }
+        if(exam->getQuestionCount()==0){
+            cout<<"No questions present in the exam.\n";
+            return;
+        }
+       exam->publish();
+
+        if (exam->isPublished()) {
+        cout << "Exam published successfully.\n";
+        } else {
+        cout << "Exam could not be published.\n";
+            }
+    }
+     void viewMyExams(const ExamService& service) const {
+        bool found = false;
+        cout << "\n--- Exams ---\n";
+        for (const auto& exam : service.getAllExams()) {
+            found = true;
+            cout << "ID: " << exam.getExamId()
+                 << " | Title: " << exam.getTitle()
+                 << " | Duration: " << exam.getDuration() << " minutes"
+                 << " | Questions: " << exam.getQuestionCount()
+                 << " | Total marks: " << exam.getTotalMarks()
+                 << " | Status: " << (exam.isPublished() ? "Published" : "Draft")
+                 << '\n';
+        }
+        if (!found) cout << "No exams have been created.\n";
+    }
+    // I think there is small pending here
+    //because of the presence of -1
+    //so let's see this later 
+    void viewStudentResults(const ExamService& service) const{
+        int examId;
+        cout<<"Enter exam Id (or -1 for all results ): \n";
+        if(!(cin>>examId)){
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(),'\n');
+            cout<<"Invalid Exam Id .\n";
+            return ;
+        }
+        bool found =false;
+        for(const auto& r:service.getAllResults()){
+            if(examId!=-1&&r.getExamId()!=examId)continue;
+            found=true;
+                        cout << "Student ID: " << r.getStudentId()
+                 << " | Exam ID: " << r.getExamId()
+                 << " | Score: " << r.getScore() << " / " << r.getTotalMarks()
+                 << " | Percentage: " << r.getAccuracy() << "%"
+                 << " | " << (r.hasPassed() ? "PASS" : "FAIL") << '\n';
+        }
+        if (!found) cout << "No results found for the selected exam.\n";
+   
+        }
+    
+    void viewClassAnalytics(ExamService& service) const {
+    int examId;
+        cout << "Enter exam ID for analytics (or -1 for all results): ";
+        if (!(cin >> examId)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid exam ID.\n";
+            return;
+        }
+
+        vector<ExamResult> selected;
+        for (const auto& r : service.getAllResults()) {
+            if (examId == -1 || r.getExamId() == examId)
+             selected.push_back(r);
+        }
+
+        if (selected.empty()) {
+            cout << "No results available for analytics.\n";
+            return;
+        }
+
+        cout << "\n--- Class Analytics ---\n";
+        cout << "Number of submissions: " << selected.size() << '\n';
+        cout << "Average marks: " << Analytics::averageMarks(selected) << '\n';
+        cout << "Highest marks: " << Analytics::highestMarks(selected) << '\n';
+        cout << "Lowest marks: " << Analytics::lowestMarks(selected) << '\n';
+        cout << "Passed: " << Analytics::countPassed(selected) << '\n';
+        cout << "Failed: " << Analytics::countFailed(selected) << '\n';
+    }
+    //Ranknings of the students 
+    void viewStudentRankings(ExamService& service) const {
+        int examId;
+        cout<<"Enter exam Id for rankings: ";
+        if(!(cin>>examId)){
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(),'\n');
+            cout<<"Invalid Exam \n";
+            return;     
+    }
+    vector<ExamResult> selected = service.getResultsForExam(examId);
+        if (selected.empty()) {
+            cout << "No results available for this exam.\n";
+            return;
+        }
+        // syntax for sorting of the marks
+        // selecting the exam and going into it 
+        //getting compare the scores then
+          sort(selected.begin(), selected.end(),
+             [](const ExamResult& a, const ExamResult& b) {
+                 if (a.getScore() != b.getScore()) return a.getScore() > b.getScore();
+                 return a.getStudentId() < b.getStudentId();
+             });
+        cout << "\n--- Student Rankings ---\n";
+        int rank = 1;
+        for (const auto& r : selected) {
+            cout << "Rank " << rank++
+                 << " | Student ID: " << r.getStudentId()
+                 << " | Score: " << r.getScore() << " / " << r.getTotalMarks()
+                 << " | Percentage: " << r.getAccuracy() << "%\n";
+        }
     }
 };
 
-
-void Student::takeTest(int examId, ExamService& service) {
-    Exam* exam = service.getExam(examId);
-
-    if (exam == nullptr) {
-        cout << "Exam not found.\n";
-        return;
-    }
-
-    attemptedExamIds.push_back(examId);
-
-    exam->conductExam();
-}
-void Teacher::createExam(ExamService& service) {
-    int examId, duration;
-    string title;
-
-    cout << "Enter Exam ID: ";
-    cin >> examId;
-
-    if (service.getExam(examId) != nullptr) {
-        cout << "Exam ID already exists.\n";
-        return;
-    }
-
-    cout << "Enter exam title: ";
-    getline(cin >> ws, title);
-
-    cout << "Enter duration in minutes: ";
-    cin >> duration;
-
-    if (duration <= 0) {
-        cout << "Duration must be greater than zero.\n";
-        return;
-    }
-
-    Exam exam(examId, title, duration);
-    service.addExam(exam);
-
-    cout << "Exam created successfully.\n";
-}
 
 //8. admin class 
 //now giving the power to the admin such he can get the acess of the every student 
