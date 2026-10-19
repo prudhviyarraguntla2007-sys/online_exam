@@ -457,7 +457,7 @@ public:
             case 2:{
                     int examid;
                 cout<<"Enter the Exam Id : ";
-                if(cin>>examid)
+                if((cin>>examid))
                 takeTest(examid,service);
                 else{
                     cin.clear();
@@ -514,6 +514,7 @@ public:
             if(exam==nullptr||!exam->isPublished()){
                 cout<<"no Exams are present" <<endl;
                 cout<<"Published Exam is not found "<<endl;
+                return;
             }
              if (service.hasResult(getUserId(), examId)) {
             cout << "You have already attempted this exam.\n";
@@ -968,7 +969,7 @@ public:
 };
 
 
-//8. admin class 
+//9. admin class 
 //now giving the power to the admin such he can get the acess of the every student 
 // Every thing like gettnig the password of ths each student and anlaysis of the each one
 //using this class we can conclude that we can give the acess to the student and 
@@ -983,7 +984,7 @@ public:
         user.active = true;
     }
 };
-// 9.authentication service 
+// 10.authentication service 
 // by this only we can go to the each class and give the aces to the each student 
 // in this class only you can register the new teacher with thier permission 
 // assigning happens from  here only 
@@ -994,7 +995,8 @@ private:
 public:
     bool registerStudent(
         int id, const string& name, const string& pass) {
-
+        if(id<=0||name.empty()||pass.empty())
+        return false;
         for (const auto& user : users) {
             if (user->getUserId() == id) {
                 return false;
@@ -1010,8 +1012,8 @@ public:
 
     bool registerTeacher(
         int id, const string& name, const string& pass) {
-
-        // TODO: Restrict teacher registration to authorized admins.
+        if(id<=0||name.empty()||pass.empty())
+        return false;
         for (const auto& user : users) {
             if (user->getUserId() == id) {
                 return false;
@@ -1037,7 +1039,8 @@ public:
         return nullptr;
     }
 };
-//10. connecting class 
+//11.main system controller
+//11. connecting class 
 // till  they are many class the gate and  oreder of all the above classes is defined in this class
 // this is the only function that calls in the main function 
 // this is only class to decide the flow from one to one or through this only we can go to the above class 
@@ -1057,13 +1060,23 @@ public:
             cout << "2. Login\n";
             cout << "0. Exit\n";
             cout << "Choice: ";
-            cin >> choice;
+           if (!(cin >> choice)) {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Invalid input.\n";
+                continue;
+            }
             if (choice == 1) {
                 int id;
                 string name, pass;
 
                 cout << "Enter student ID: ";
-                cin >> id;
+                 if (!(cin >> id)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid ID.\n";
+                    continue;
+                }
 
                 cout << "Enter name: ";
                 cin >> ws;
@@ -1078,35 +1091,80 @@ public:
                     cout << "User ID already exists.\n";
                 }
             }
+            //to get register or  to shifiting to admin power
+            // only admin know the authorized code to register the student 
+            else if(choice==3){
+                const string adminCode="admin123";
+                string enteredCode;
+                cout<<"Enter admin authorization code :";
+                cin>> enteredCode;
+                if(enteredCode!=adminCode){
+                    cout<<"unauthorized. Teacher registration denied .\n";
+                    continue;
+                }
+                 int id;
+                string name, pass;
+                cout << "Enter new teacher ID: ";
+                if (!(cin >> id)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid ID.\\n";
+                    continue;
+                }
+                cout << "Enter teacher name: ";
+                getline(cin >> ws, name);
+                cout << "Enter teacher password: ";
+                cin >> pass;
+
+                if (auth.registerTeacher(id, name, pass))
+                    cout << "Teacher registration successful.\\n";
+                else
+                    cout << "Teacher registration failed. Check the ID and details.\\n";
+            }
             else if (choice == 2) {
                 int id;
                 string pass;
 
                 cout<< "Enter user ID: ";
-                cin >> id;
+               if (!(cin >> id)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid ID.\n";
+                    continue;
+                }
 
                 cout << "Enter password: ";
                 cin >> pass;
 
                 User* user = auth.login(id, pass);
-
-                if (user != nullptr) {
+                if(user==nullptr)
+                {
+                    cout<<"Invalid login .\n";
+                    cout<<"or inactive acccount \n";
+                    continue;
+                }
                     cout << "Login successful: "
                          << user->getRole() << '\n';
 
                     // Runtime polymorphism:
                    if (auto* teacher =dynamic_cast<Teacher*>(user)) {
                                 teacher->displayDashboard(examService);
+                    }else if (auto* student = dynamic_cast<Student*>(user)) {
+                    student->displayDashboard(examService);
                     }
-                    else {
+                    else
+                     {
                                 user->displayDashboard();
                     }
-                } else {
-                    cout << "Invalid credentials or inactive account.\n";
                 }
+                
+            else if(choice!=0){
+                cout<<"Please enter a valid choice \n";
             }
 
         } while (choice != 0);
+        cout<<"Thank You for using the Exam system\n";
+
     }
 };
 // when the function is runnning then it is auotmatically call the class and enters in to the class
